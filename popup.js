@@ -1,6 +1,11 @@
+console.log('RudderStackTracker: popup.js loaded');
+
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('RudderStackTracker: DOMContentLoaded event fired');
   const tracksContainer = document.getElementById('tracksContainer');
   const clearBtn = document.getElementById('clearBtn');
+  
+  console.log('RudderStackTracker: Elements found', { tracksContainer: !!tracksContainer, clearBtn: !!clearBtn });
 
   // Syntax highlight JSON
   function syntaxHighlightJson(jsonString) {
@@ -30,20 +35,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load all tracks from storage
   function loadTracks() {
-    chrome.storage.local.get(['allTracks'], (result) => {
-      const allTracks = result.allTracks || [];
+    console.log('RudderStackTracker: Loading tracks...');
+    try {
+      chrome.storage.local.get(['allTracks'], (result) => {
+        if (chrome.runtime.lastError) {
+          console.error('RudderStackTracker: Error getting storage:', chrome.runtime.lastError);
+          return;
+        }
+        const allTracks = result.allTracks || [];
+        console.log('RudderStackTracker: Tracks loaded', { count: allTracks.length });
       
-      if (allTracks.length === 0) {
-        tracksContainer.innerHTML = '<p class="empty-state">No tracks captured yet.</p>';
-        return;
-      }
+        if (allTracks.length === 0) {
+          console.log('RudderStackTracker: No tracks to display');
+          tracksContainer.innerHTML = '<p class="empty-state">No tracks captured yet.</p>';
+          return;
+        }
 
       // Clear the badge
       chrome.action.setBadgeText({ text: "" });
 
-      // Build accordion HTML
-      tracksContainer.innerHTML = '';
-      allTracks.forEach((track, index) => {
+        // Build accordion HTML
+        console.log('RudderStackTracker: Rendering tracks');
+        tracksContainer.innerHTML = '';
+        allTracks.forEach((track, index) => {
         const accordionItem = document.createElement('div');
         accordionItem.className = 'accordion-item';
         
@@ -73,32 +87,56 @@ document.addEventListener('DOMContentLoaded', () => {
         accordionItem.appendChild(header);
         accordionItem.appendChild(content);
         tracksContainer.appendChild(accordionItem);
-      });
+        });
+        console.log('RudderStackTracker: Tracks rendered successfully');
 
-      // Add copy button listeners
-      document.querySelectorAll('.copy-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const index = parseInt(btn.dataset.index);
-          const payload = allTracks[index].payload;
-          
-          navigator.clipboard.writeText(payload).then(() => {
-            const originalText = btn.textContent;
-            btn.textContent = "Copied!";
-            setTimeout(() => btn.textContent = originalText, 1500);
+        // Add copy button listeners
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const index = parseInt(btn.dataset.index);
+            const payload = allTracks[index].payload;
+            
+            navigator.clipboard.writeText(payload).then(() => {
+              console.log('RudderStackTracker: Payload copied to clipboard');
+              const originalText = btn.textContent;
+              btn.textContent = "Copied!";
+              setTimeout(() => btn.textContent = originalText, 1500);
+            }).catch(err => {
+              console.error('RudderStackTracker: Error copying to clipboard:', err);
+            });
           });
         });
       });
-    });
+    } catch (error) {
+      console.error('RudderStackTracker: Error in loadTracks:', error);
+      tracksContainer.innerHTML = '<p class="empty-state">Error loading tracks. Check console.</p>';
+    }
   }
 
   // Clear all tracks
   clearBtn.addEventListener('click', () => {
+    console.log('RudderStackTracker: Clear button clicked');
     chrome.storage.local.set({ allTracks: [] }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('RudderStackTracker: Error clearing storage:', chrome.runtime.lastError);
+        return;
+      }
+      console.log('RudderStackTracker: Storage cleared');
       loadTracks();
     });
   });
 
   // Initial load
+  console.log('RudderStackTracker: Starting initial load');
   loadTracks();
+});
+
+// Error handler for uncaught errors
+window.addEventListener('error', (event) => {
+  console.error('RudderStackTracker: Uncaught error:', event.error);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('RudderStackTracker: Unhandled promise rejection:', event.reason);
 });

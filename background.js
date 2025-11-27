@@ -1,9 +1,15 @@
+console.log('RudderStackTracker: background.js loaded');
+
 // Hardcoding the specific URL to capture
-const TARGET_URL_PATTERN = "*://mailgun-dataplane.rudderstack.com/v1/track*"; 
+const TARGET_URL_PATTERN = "*://mailgun-dataplane.rudderstack.com/v1/track*";
+
+console.log('RudderStackTracker: Registering webRequest listener for:', TARGET_URL_PATTERN);
 
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
+    console.log('RudderStackTracker: Request captured:', details.url);
     if (details.method === "POST" && details.requestBody) {
+      console.log('RudderStackTracker: POST request with body detected');
       
       let finalPayload = "No parsable data found.";
 
@@ -46,7 +52,12 @@ chrome.webRequest.onBeforeRequest.addListener(
       };
 
       // Get existing tracks and add new one
+      console.log('RudderStackTracker: Storing track entry:', eventName);
       chrome.storage.local.get(['allTracks'], (result) => {
+        if (chrome.runtime.lastError) {
+          console.error('RudderStackTracker: Error getting storage:', chrome.runtime.lastError);
+          return;
+        }
         const allTracks = result.allTracks || [];
         allTracks.unshift(trackEntry); // Add to beginning
         
@@ -55,11 +66,18 @@ chrome.webRequest.onBeforeRequest.addListener(
           allTracks.pop();
         }
         
-        chrome.storage.local.set({ allTracks: allTracks });
+        chrome.storage.local.set({ allTracks: allTracks }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('RudderStackTracker: Error setting storage:', chrome.runtime.lastError);
+            return;
+          }
+          console.log('RudderStackTracker: Track stored successfully, total:', allTracks.length);
+        });
 
         // Update badge with count
         chrome.action.setBadgeText({ text: allTracks.length.toString() });
         chrome.action.setBadgeBackgroundColor({ color: "#2ecc71" });
+        console.log('RudderStackTracker: Badge updated:', allTracks.length);
       });
     }
   },
