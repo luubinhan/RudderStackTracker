@@ -24,6 +24,49 @@ header {
   padding-bottom: 10px;
 }
 
+.search-container {
+  position: relative;
+  margin-bottom: 15px;
+}
+
+#searchInput {
+  width: 100%;
+  padding: 8px 35px 8px 12px;
+  border: 2px solid #dcdcdc;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+#searchInput:focus {
+  outline: none;
+  border-color: #5cb85c;
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #7f8c8d;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  display: none;
+}
+
+.clear-search-btn.visible {
+  display: block;
+}
+
+.clear-search-btn:hover {
+  color: #e74c3c;
+}
+
 h1 {
   font-size: 16px;
   margin: 0;

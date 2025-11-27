@@ -1,11 +1,20 @@
 console.log('RudderStackTracker: popup.js loaded');
 
+let allTracksCache = [];
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('RudderStackTracker: DOMContentLoaded event fired');
   const tracksContainer = document.getElementById('tracksContainer');
   const clearBtn = document.getElementById('clearBtn');
+  const searchInput = document.getElementById('searchInput');
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
   
-  console.log('RudderStackTracker: Elements found', { tracksContainer: !!tracksContainer, clearBtn: !!clearBtn });
+  console.log('RudderStackTracker: Elements found', { 
+    tracksContainer: !!tracksContainer, 
+    clearBtn: !!clearBtn,
+    searchInput: !!searchInput,
+    clearSearchBtn: !!clearSearchBtn
+  });
 
   // Syntax highlight JSON
   function syntaxHighlightJson(jsonString) {
@@ -34,8 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Load all tracks from storage
-  function loadTracks() {
-    console.log('RudderStackTracker: Loading tracks...');
+  function loadTracks(filterText = '') {
+    console.log('RudderStackTracker: Loading tracks...', { filterText });
     try {
       chrome.storage.local.get(['allTracks'], (result) => {
         if (chrome.runtime.lastError) {
@@ -43,21 +52,34 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
         const allTracks = result.allTracks || [];
+        allTracksCache = allTracks;
         console.log('RudderStackTracker: Tracks loaded', { count: allTracks.length });
-      
-        if (allTracks.length === 0) {
-          console.log('RudderStackTracker: No tracks to display');
-          tracksContainer.innerHTML = '<p class="empty-state">No tracks captured yet.</p>';
-          return;
-        }
+        
+        // Filter tracks by event name
+        const filteredTracks = filterText 
+          ? allTracks.filter(track => 
+              track.eventName.toLowerCase().includes(filterText.toLowerCase())
+            )
+          : allTracks;
+        
+        
+        console.log('RudderStackTracker: Tracks after filter', { count: filteredTracks.length });
 
-      // Clear the badge
+        if (filteredTracks.length === 0) {
+          console.log('RudderStackTracker: No tracks to display');
+          if (filterText) {
+            tracksContainer.innerHTML = '<p class="empty-state">No tracks match your search.</p>';
+          } else {
+            tracksContainer.innerHTML = '<p class="empty-state">No tracks captured yet.</p>';
+          }
+          return;
+        }      // Clear the badge
       chrome.action.setBadgeText({ text: "" });
 
         // Build accordion HTML
         console.log('RudderStackTracker: Rendering tracks');
         tracksContainer.innerHTML = '';
-        allTracks.forEach((track, index) => {
+        filteredTracks.forEach((track, index) => {
         const accordionItem = document.createElement('div');
         accordionItem.className = 'accordion-item';
         
@@ -95,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const index = parseInt(btn.dataset.index);
-            const payload = allTracks[index].payload;
+            const payload = filteredTracks[index].payload;
             
             navigator.clipboard.writeText(payload).then(() => {
               console.log('RudderStackTracker: Payload copied to clipboard');
@@ -114,6 +136,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Search functionality
+  searchInput.addEventListener('input', (e) => {
+    const searchText = e.target.value;
+    console.log('RudderStackTracker: Search input changed:', searchText);
+    
+    if (searchText) {
+      clearSearchBtn.classList.add('visible');
+    } else {
+      clearSearchBtn.classList.remove('visible');
+    }
+    
+    loadTracks(searchText);
+  });
+  
+  // Clear search
+  clearSearchBtn.addEventListener('click', () => {
+    console.log('RudderStackTracker: Clear search button clicked');
+    searchInput.value = '';
+    clearSearchBtn.classList.remove('visible');
+    loadTracks();
+  });
+  
   // Clear all tracks
   clearBtn.addEventListener('click', () => {
     console.log('RudderStackTracker: Clear button clicked');
@@ -123,6 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       console.log('RudderStackTracker: Storage cleared');
+      searchInput.value = '';
+      clearSearchBtn.classList.remove('visible');
       loadTracks();
     });
   });
