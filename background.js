@@ -1,7 +1,7 @@
 console.log('RudderStackTracker: background.js loaded');
 
 // Hardcoding the specific URL to capture
-const TARGET_URL_PATTERN = "*://mailgun-dataplane.rudderstack.com/v1/track*";
+const TARGET_URL_PATTERN = "*rudderstack.com/v1/track*";
 
 console.log('RudderStackTracker: Registering webRequest listener for:', TARGET_URL_PATTERN);
 
