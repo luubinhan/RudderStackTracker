@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Filter out shell_page_loaded events and apply search filter
         const filteredTracks = allTracks
-          .filter(track => track.eventName !== 'shell_page_loaded')
+          // .filter(track => track.eventName !== 'shell_page_loaded')
           .filter(track => 
             filterText 
               ? track.eventName.toLowerCase().includes(filterText.toLowerCase())
