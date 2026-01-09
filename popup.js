@@ -55,12 +55,14 @@ document.addEventListener('DOMContentLoaded', () => {
         allTracksCache = allTracks;
         console.log('RudderStackTracker: Tracks loaded', { count: allTracks.length });
         
-        // Filter tracks by event name
-        const filteredTracks = filterText 
-          ? allTracks.filter(track => 
-              track.eventName.toLowerCase().includes(filterText.toLowerCase())
-            )
-          : allTracks;
+        // Filter out shell_page_loaded events and apply search filter
+        const filteredTracks = allTracks
+          .filter(track => track.eventName !== 'shell_page_loaded')
+          .filter(track => 
+            filterText 
+              ? track.eventName.toLowerCase().includes(filterText.toLowerCase())
+              : true
+          );
         
         
         console.log('RudderStackTracker: Tracks after filter', { count: filteredTracks.length });
