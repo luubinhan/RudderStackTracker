@@ -39,8 +39,8 @@ chrome.webRequest.onBeforeRequest.addListener(
 
       // Extract event name from payload
       let eventName = "Unknown Event";
-      if (payloadObj && payloadObj.properties && payloadObj.properties.event && payloadObj.properties.event_unformatted_name) {
-        eventName = payloadObj.properties.event_unformatted_name || payloadObj.properties.event;
+      if (payloadObj && payloadObj.properties && payloadObj.properties.event) {
+        eventName = payloadObj.properties.event_unformatted_name || payloadObj.properties.event?.unformatted_name || payloadObj.properties.event;
       }
 
       // Create track entry
