@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "RudderStack Tracker",
   "version": "1.0",
-  "description": "Captures and displays the payload for mailgun-dataplane.rudderstack.com/v1/track.",
+  "description": "Captures and displays RudderStack /v1/track and dataplane beacon/v1/batch payloads.",
   "permissions": [
     "webRequest",
     "storage"
