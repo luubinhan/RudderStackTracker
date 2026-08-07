@@ -32,6 +32,7 @@ function buildTrackEntries(payloadObj, finalPayload) {
       eventName: item.properties?.event?.display_name
         || item.properties?.unformatted_name
         || item.properties?.event?.event_unformatted_name
+        || item.properties?.event
         || "Unknown Event",
       timestamp,
       payload: JSON.stringify(item, null, 2)
