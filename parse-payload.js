@@ -22,7 +22,7 @@ function resolveBatchItemMeta(item) {
   if (rawType === "group") {
     return {
       eventType: "group",
-      eventName: item.groupId || "Unknown Group"
+      eventName: "[Group] " + item.groupId || "Unknown Group"
     };
   }
 
