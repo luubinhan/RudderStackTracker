@@ -29,7 +29,7 @@ function buildTrackEntries(payloadObj, finalPayload) {
     // Reverse so unshifting yields batch[0] above later items
     return payloadObj.batch.map((item, index) => ({
       id: baseId + index,
-      eventName: item.properties?.event
+      eventName: item.properties?.event?.display_name
         || item.properties?.unformatted_name
         || item.properties?.event?.event_unformatted_name
         || "Unknown Event",
