@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "RudderStack Tracker",
-  "version": "1.0",
-  "description": "Captures and displays RudderStack /v1/track and dataplane beacon/v1/batch payloads.",
+  "version": "1.1",
+  "description": "Captures and displays RudderStack /v1/track, /v1/batch, and beacon/v1/batch payloads.",
   "permissions": [
     "webRequest",
     "storage"
@@ -13,6 +13,21 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["page-hook.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

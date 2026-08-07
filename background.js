@@ -1,56 +1,44 @@
-console.log('RudderStackTracker: background.js loaded');
+importScripts("parse-payload.js");
+
+console.log("RudderStackTracker: background.js loaded");
 
 const TARGET_URL_PATTERNS = [
   "*://*.rudderstack.com/v1/track*",
+  "*://*.rudderstack.com/v1/batch*",
   "*://*.rudderstack.com/beacon/v1/batch*"
 ];
 
-console.log('RudderStackTracker: Registering webRequest listener for:', TARGET_URL_PATTERNS);
-
-function extractLegacyEventName(payloadObj) {
-  if (payloadObj && payloadObj.properties && payloadObj.properties.event) {
-    return payloadObj.properties.event_unformatted_name
-      || payloadObj.properties.event?.unformatted_name
-      || payloadObj.properties.event;
+function isRudderStackAnalyticsUrl(url) {
+  try {
+    const u = new URL(url);
+    return (
+      u.hostname.endsWith("rudderstack.com") &&
+      (u.pathname.includes("/v1/track") ||
+        u.pathname.includes("/v1/batch") ||
+        u.pathname.includes("/beacon/v1/batch"))
+    );
+  } catch {
+    return false;
   }
-  return "Unknown Event";
 }
 
-function buildTrackEntries(payloadObj, finalPayload) {
-  const timestamp = new Date().toLocaleTimeString();
-  const baseId = Date.now();
-
-  if (payloadObj && Array.isArray(payloadObj.batch)) {
-    if (payloadObj.batch.length === 0) {
-      return [];
-    }
-
-    // Reverse so unshifting yields batch[0] above later items
-    return payloadObj.batch.map((item, index) => ({
-      id: baseId + index,
-      eventName: item?.properties?.event?.display_name || "Unknown Event",
-      timestamp,
-      payload: JSON.stringify(item, null, 2)
-    })).reverse();
-  }
-
-  return [{
-    id: baseId,
-    eventName: extractLegacyEventName(payloadObj),
-    timestamp,
-    payload: finalPayload
-  }];
-}
+console.log("RudderStackTracker: Registering webRequest listener for:", TARGET_URL_PATTERNS);
 
 function storeTrackEntries(trackEntries) {
   if (trackEntries.length === 0) {
     return;
   }
 
-  console.log('RudderStackTracker: Storing track entries:', trackEntries.map((e) => e.eventName));
-  chrome.storage.local.get(['allTracks'], (result) => {
+  console.log(
+    "RudderStackTracker: Storing track entries:",
+    trackEntries.map((e) => e.eventName)
+  );
+  chrome.storage.local.get(["allTracks"], (result) => {
     if (chrome.runtime.lastError) {
-      console.error('RudderStackTracker: Error getting storage:', chrome.runtime.lastError);
+      console.error(
+        "RudderStackTracker: Error getting storage:",
+        chrome.runtime.lastError
+      );
       return;
     }
     const allTracks = result.allTracks || [];
@@ -64,52 +52,81 @@ function storeTrackEntries(trackEntries) {
 
     chrome.storage.local.set({ allTracks: allTracks }, () => {
       if (chrome.runtime.lastError) {
-        console.error('RudderStackTracker: Error setting storage:', chrome.runtime.lastError);
+        console.error(
+          "RudderStackTracker: Error setting storage:",
+          chrome.runtime.lastError
+        );
         return;
       }
-      console.log('RudderStackTracker: Tracks stored successfully, total:', allTracks.length);
+      console.log(
+        "RudderStackTracker: Tracks stored successfully, total:",
+        allTracks.length
+      );
     });
 
     chrome.action.setBadgeText({ text: allTracks.length.toString() });
     chrome.action.setBadgeBackgroundColor({ color: "#2ecc71" });
-    console.log('RudderStackTracker: Badge updated:', allTracks.length);
+    console.log("RudderStackTracker: Badge updated:", allTracks.length);
   });
 }
 
+function ingestPayloadString(bodyString, source) {
+  if (!bodyString || typeof bodyString !== "string") {
+    console.log("RudderStackTracker: Empty body from", source);
+    return;
+  }
+
+  const { payloadObj, finalPayload } = parseBodyString(bodyString);
+  const trackEntries = buildTrackEntries(payloadObj, finalPayload);
+  if (trackEntries.length === 0) {
+    console.log(
+      "RudderStackTracker: No storeable entries from",
+      source,
+      "(body unreadable or empty batch)"
+    );
+    return;
+  }
+  console.log("RudderStackTracker: Ingested from", source);
+  storeTrackEntries(trackEntries);
+}
+
+// Page-hook path: sendBeacon / fetch bodies Chrome webRequest cannot read
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (!message || message.type !== "RUDDERSTACK_PAYLOAD") {
+    return;
+  }
+
+  if (!isRudderStackAnalyticsUrl(message.url || "")) {
+    sendResponse({ ok: false, reason: "url" });
+    return;
+  }
+
+  ingestPayloadString(message.body, "page-hook");
+  sendResponse({ ok: true });
+});
+
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
-    console.log('RudderStackTracker: Request captured:', details.url);
-    if (details.method === "POST" && details.requestBody) {
-      console.log('RudderStackTracker: POST request with body detected');
-
-      let finalPayload = "No parsable data found.";
-      let payloadObj = null;
-
-      // 1. Handle JSON/Raw Data
-      if (details.requestBody.raw) {
-        try {
-          const decoder = new TextDecoder("utf-8");
-          const rawData = details.requestBody.raw[0].bytes;
-          const decodedString = decoder.decode(rawData);
-
-          try {
-            payloadObj = JSON.parse(decodedString);
-            finalPayload = JSON.stringify(payloadObj, null, 2);
-          } catch {
-            finalPayload = decodedString;
-          }
-        } catch (e) {
-          finalPayload = "Error decoding raw bytes.";
-        }
-      }
-      // 2. Handle Form Data
-      else if (details.requestBody.formData) {
-        finalPayload = JSON.stringify(details.requestBody.formData, null, 2);
-      }
-
-      const trackEntries = buildTrackEntries(payloadObj, finalPayload);
-      storeTrackEntries(trackEntries);
+    console.log("RudderStackTracker: Request captured:", details.url);
+    if (details.method !== "POST" || !details.requestBody) {
+      return;
     }
+
+    const decoded = decodeWebRequestBody(details.requestBody);
+    if (!decoded) {
+      // Typical for navigator.sendBeacon — page-hook should capture instead
+      console.log(
+        "RudderStackTracker: webRequest body unavailable (likely sendBeacon); waiting for page-hook",
+        details.requestBody.error || details.requestBody
+      );
+      return;
+    }
+
+    const trackEntries = buildTrackEntries(
+      decoded.payloadObj,
+      decoded.finalPayload
+    );
+    storeTrackEntries(trackEntries);
   },
   { urls: TARGET_URL_PATTERNS },
   ["requestBody", "extraHeaders"]
