@@ -2,7 +2,7 @@ console.log('RudderStackTracker: background.js loaded');
 
 const TARGET_URL_PATTERNS = [
   "*://*.rudderstack.com/v1/track*",
-  "*://dataplane.rudderstack.com/beacon/v1/batch*"
+  "*://*.rudderstack.com/beacon/v1/batch*"
 ];
 
 console.log('RudderStackTracker: Registering webRequest listener for:', TARGET_URL_PATTERNS);
