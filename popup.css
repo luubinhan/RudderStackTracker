@@ -122,6 +122,34 @@ h1 {
   background: #e0f8eb;
 }
 
+/* identify — orange */
+.accordion-item--identify {
+  background: #fff8f0;
+  border-color: #f0a04b;
+}
+
+.accordion-item--identify .accordion-header {
+  background: #fff8f0;
+}
+
+.accordion-item--identify .accordion-header:hover {
+  background: #ffeed9;
+}
+
+/* group — blue */
+.accordion-item--group {
+  background: #f0f6ff;
+  border-color: #4b8cf0;
+}
+
+.accordion-item--group .accordion-header {
+  background: #f0f6ff;
+}
+
+.accordion-item--group .accordion-header:hover {
+  background: #e0ecff;
+}
+
 .event-name {
   font-weight: 600;
   color: #2c3e50;

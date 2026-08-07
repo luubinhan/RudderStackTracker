@@ -83,7 +83,11 @@ document.addEventListener('DOMContentLoaded', () => {
         tracksContainer.innerHTML = '';
         filteredTracks.forEach((track, index) => {
         const accordionItem = document.createElement('div');
-        accordionItem.className = 'accordion-item';
+        const typeClass =
+          track.eventType === 'identify' ? ' accordion-item--identify'
+          : track.eventType === 'group' ? ' accordion-item--group'
+          : '';
+        accordionItem.className = 'accordion-item' + typeClass;
         
         const header = document.createElement('div');
         header.className = 'accordion-header';
