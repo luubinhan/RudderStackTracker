@@ -4,13 +4,36 @@
  */
 
 function extractLegacyEventName(payloadObj) {
-  console.log("andy extractLegacyEventName", payloadObj);
   if (payloadObj) {
     return payloadObj.properties?.event_unformatted_name
       || payloadObj.properties?.event?.unformatted_name
       || payloadObj.properties?.event;
   }
   return "Unknown Event";
+}
+
+function resolveBatchItemMeta(item) {
+  const rawType = item?.type;
+
+  if (rawType === "identify") {
+    return { eventType: "identify", eventName: "identify" };
+  }
+
+  if (rawType === "group") {
+    return {
+      eventType: "group",
+      eventName: item.groupId || "Unknown Group"
+    };
+  }
+
+  return {
+    eventType: "track",
+    eventName: item.properties?.event?.display_name
+      || item.properties?.unformatted_name
+      || item.properties?.event?.event_unformatted_name
+      || item.properties?.event
+      || "Unknown Event"
+  };
 }
 
 /**
@@ -27,16 +50,16 @@ function buildTrackEntries(payloadObj, finalPayload) {
     }
 
     // Reverse so unshifting yields batch[0] above later items
-    return payloadObj.batch.map((item, index) => ({
-      id: baseId + index,
-      eventName: item.properties?.event?.display_name
-        || item.properties?.unformatted_name
-        || item.properties?.event?.event_unformatted_name
-        || item.properties?.event
-        || "Unknown Event",
-      timestamp,
-      payload: JSON.stringify(item, null, 2)
-    })).reverse();
+    return payloadObj.batch.map((item, index) => {
+      const { eventType, eventName } = resolveBatchItemMeta(item);
+      return {
+        id: baseId + index,
+        eventType,
+        eventName,
+        timestamp,
+        payload: JSON.stringify(item, null, 2)
+      };
+    }).reverse();
   }
 
   if (!payloadObj) {
@@ -45,6 +68,7 @@ function buildTrackEntries(payloadObj, finalPayload) {
 
   return [{
     id: baseId,
+    eventType: "track",
     eventName: extractLegacyEventName(payloadObj),
     timestamp,
     payload: finalPayload

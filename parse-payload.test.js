@@ -94,6 +94,71 @@ test("decodeWebRequestBody reads raw UTF-8 bytes", () => {
   assert.strictEqual(entries[0].eventName, "Engage - Page Loaded");
 });
 
+test("identify batch item uses eventName identify and eventType identify", () => {
+  const payload = {
+    batch: [
+      {
+        type: "identify",
+        traits: { email: "a@b.com" },
+        userId: "u1"
+      }
+    ],
+    writeKey: "dummy"
+  };
+  const entries = buildTrackEntries(payload, JSON.stringify(payload, null, 2));
+  assert.strictEqual(entries.length, 1);
+  assert.strictEqual(entries[0].eventName, "identify");
+  assert.strictEqual(entries[0].eventType, "identify");
+});
+
+test("group batch item uses groupId and eventType group", () => {
+  const payload = {
+    batch: [
+      {
+        type: "group",
+        groupId: "org_123",
+        traits: { name: "Acme" }
+      }
+    ],
+    writeKey: "dummy"
+  };
+  const entries = buildTrackEntries(payload, JSON.stringify(payload, null, 2));
+  assert.strictEqual(entries.length, 1);
+  assert.strictEqual(entries[0].eventName, "org_123");
+  assert.strictEqual(entries[0].eventType, "group");
+});
+
+test("group without groupId falls back to Unknown Group", () => {
+  const payload = {
+    batch: [{ type: "group", traits: {} }],
+    writeKey: "dummy"
+  };
+  const entries = buildTrackEntries(payload, JSON.stringify(payload, null, 2));
+  assert.strictEqual(entries[0].eventName, "Unknown Group");
+  assert.strictEqual(entries[0].eventType, "group");
+});
+
+test("track batch item includes eventType track", () => {
+  const entries = buildTrackEntries(
+    BEACON_BATCH_PAYLOAD,
+    JSON.stringify(BEACON_BATCH_PAYLOAD, null, 2)
+  );
+  assert.strictEqual(entries[0].eventType, "track");
+  assert.strictEqual(entries[0].eventName, "Engage - Page Loaded");
+});
+
+test("legacy single track includes eventType track", () => {
+  const legacy = {
+    properties: {
+      event: "button_clicked",
+      event_unformatted_name: "button_clicked"
+    },
+    type: "track"
+  };
+  const entries = buildTrackEntries(legacy, JSON.stringify(legacy, null, 2));
+  assert.strictEqual(entries[0].eventType, "track");
+});
+
 if (!process.exitCode) {
   console.log("All tests passed.");
 }
