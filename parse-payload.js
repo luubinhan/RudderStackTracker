@@ -3,11 +3,27 @@
  * No Chrome APIs — safe to unit-test in Node.
  */
 
+function stringEventName(value) {
+  return typeof value === "string" && value ? value : null;
+}
+
+function extractTrackEventName(item) {
+  const props = item?.properties;
+  return stringEventName(props?.event_display_name)
+    || stringEventName(props?.event?.display_name)
+    || stringEventName(item?.event)
+    || stringEventName(props?.event_unformatted_name)
+    || stringEventName(props?.event?.unformatted_name)
+    || stringEventName(props?.event_name)
+    || stringEventName(props?.unformatted_name)
+    || stringEventName(props?.event?.event_unformatted_name)
+    || stringEventName(props?.event)
+    || "Unknown Event";
+}
+
 function extractLegacyEventName(payloadObj) {
   if (payloadObj) {
-    return payloadObj.properties?.event_unformatted_name
-      || payloadObj.properties?.event?.unformatted_name
-      || payloadObj.properties?.event;
+    return extractTrackEventName(payloadObj);
   }
   return "Unknown Event";
 }
@@ -22,17 +38,13 @@ function resolveBatchItemMeta(item) {
   if (rawType === "group") {
     return {
       eventType: "group",
-      eventName: "[Group] " + item.groupId || "Unknown Group"
+      eventName: item.groupId || "Unknown Group"
     };
   }
 
   return {
     eventType: "track",
-    eventName: item.properties?.event?.display_name
-      || item.properties?.unformatted_name
-      || item.properties?.event?.event_unformatted_name
-      || item.properties?.event
-      || "Unknown Event"
+    eventName: extractTrackEventName(item)
   };
 }
 

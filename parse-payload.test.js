@@ -5,27 +5,23 @@ const {
   decodeWebRequestBody
 } = require("./parse-payload.js");
 
-// Minimal shape matching network payload from Sinch Engage beacon/v1/batch
+// Flattened track properties from /v1/batch (event_* fields on properties)
 const BEACON_BATCH_PAYLOAD = {
   batch: [
     {
       properties: {
-        sinch_sdk_version: "0.0.0+5e02cfaa",
-        event: {
-          tracing_id: "gevrdQXuKuYsj_szPNDUg",
-          type: "com.sinch.frontend.event",
-          name: "engage_page_loaded",
-          unformatted_name: "page_loaded",
-          display_name: "Engage - Page Loaded"
-        },
-        user: { id: "7cd4316b-159c-45c0-94e8-e59317bb54e0" }
+        app_name: "Engage",
+        event_name: "engage_page_loaded",
+        event_unformatted_name: "page_loaded",
+        event_display_name: "Engage - Page Loaded",
+        user_id: "e22f17b6-9a76-40a2-a3d6-c8e45ebe071b"
       },
-      event: "com.sinch.frontend.event",
+      event: "Engage - Page Loaded",
       type: "track",
       channel: "web"
     }
   ],
-  writeKey: "dummy"
+  sentAt: "2026-08-25T02:22:46.316Z"
 };
 
 function test(name, fn) {
@@ -39,7 +35,7 @@ function test(name, fn) {
   }
 }
 
-test("batch item uses properties.event.display_name", () => {
+test("batch item uses properties.event_display_name", () => {
   const entries = buildTrackEntries(
     BEACON_BATCH_PAYLOAD,
     JSON.stringify(BEACON_BATCH_PAYLOAD, null, 2)
@@ -48,7 +44,8 @@ test("batch item uses properties.event.display_name", () => {
   assert.strictEqual(entries[0].eventName, "Engage - Page Loaded");
   const stored = JSON.parse(entries[0].payload);
   assert.strictEqual(stored.type, "track");
-  assert.strictEqual(stored.properties.event.name, "engage_page_loaded");
+  assert.strictEqual(stored.properties.event_name, "engage_page_loaded");
+  assert.strictEqual(stored.event, "Engage - Page Loaded");
 });
 
 test("parseBodyString accepts real batch JSON string", () => {
@@ -157,6 +154,25 @@ test("legacy single track includes eventType track", () => {
   };
   const entries = buildTrackEntries(legacy, JSON.stringify(legacy, null, 2));
   assert.strictEqual(entries[0].eventType, "track");
+});
+
+test("nested properties.event.display_name still resolves", () => {
+  const payload = {
+    batch: [
+      {
+        properties: {
+          event: {
+            name: "engage_page_loaded",
+            display_name: "Engage - Page Loaded"
+          }
+        },
+        event: "com.sinch.frontend.event",
+        type: "track"
+      }
+    ]
+  };
+  const entries = buildTrackEntries(payload, JSON.stringify(payload, null, 2));
+  assert.strictEqual(entries[0].eventName, "Engage - Page Loaded");
 });
 
 if (!process.exitCode) {
